@@ -5,7 +5,18 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    init: true
+    env_file:
+      - .env
     volumes:
-      - ./autorespond_trigger.json:/app/autorespond_trigger.json
-      - ./exclude_words.json:/app/exclude_words.json
-      - ./languages.json:/app/languages.json
+      - ./autorespond_trigger.json:/app/autorespond_trigger.json:ro
+      - ./exclude_words.json:/app/exclude_words.json:ro
+      - ./languages.json:/app/languages.json:ro
+      - ./bot_log.txt:/app/bot_log.txt
+    networks:
+      - crcon_common
+
+networks:
+  crcon_common:
+    external: true
+    name: hll_rcon_tool_common

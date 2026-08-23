@@ -290,23 +290,45 @@ class ReasonSelect(discord.ui.View):
         self.self_report = self_report
 
     async def initialize_view(self):
-        select_label = get_translation(self.user_lang, "select_reason")
-        reasons = await self.api_client.get_all_standard_message_config()
-        self.reasons = reasons
+        templates = await self.api_client.get_all_standard_message_config() or []
+        self.reasons = [
+            template
+            for template in templates
+            if isinstance(template, dict)
+            and str(template.get("title") or "").strip()
+            and str(template.get("content") or "").strip()
+        ]
         self.player_name = await get_playername(self.player_id, self.api_client)
-        selectinst = Select(placeholder=select_label)
+
+        selectinst = Select(
+            placeholder=get_translation(self.user_lang, "select_reason")
+        )
         selectinst.min_values = 1
         selectinst.max_values = 1
-        options = []
-        options.append(discord.SelectOption(label=get_translation(self.user_lang, "own_reason"), value="empty"))
+
+        options = [
+            discord.SelectOption(
+                label=get_translation(self.user_lang, "own_reason"),
+                value="empty"
+            )
+        ]
+
         entries = 1
-        if reasons[0] != '' and len(reasons) > 1:
-            for x, reason in enumerate(reasons):
-                if len(reason) > 100:
-                    reason = reason[:100]
-                if len(reason) > 0 and entries < 25:
-                    options.append(discord.SelectOption(label=reason, value=str(x)))
-                    entries = entries + 1
+        for index, template in enumerate(self.reasons):
+            if entries >= 25:
+                break
+
+            title = template["title"]
+            content = template["content"]
+
+            options.append(
+                discord.SelectOption(
+                    label=title[:100],
+                    value=str(index),
+                    description=content[:100]
+                )
+            )
+            entries += 1
         selectinst.options = options
         selectinst.callback = self.callback
         self.add_item(selectinst)
@@ -315,7 +337,7 @@ class ReasonSelect(discord.ui.View):
         value = interaction.data["values"][0]
         if value != "empty":
             value = int(value)
-            reason = self.reasons[value]
+            reason = self.reasons[value]["content"]
         else:
             reason = value
         if self.action == "Message":

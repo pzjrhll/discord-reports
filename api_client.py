@@ -240,16 +240,43 @@ class APIClient:
             return None
 
     async def get_all_standard_message_config(self):
-        url = f'{self.base_url}/api/get_all_standard_message_config'
+        url = f'{self.base_url}/api/get_message_templates'
+        params = {"category": "REASON"}
+
         try:
             async with aiohttp.ClientSession(headers=self.headers) as session:
-                async with session.get(url) as response:
+                async with session.get(url, params=params) as response:
                     response.raise_for_status()
                     data = await response.json()
-                    return data["result"]["StandardPunishmentMessagesUserConfig"]["messages"]
+
+                    if data.get("failed"):
+                        logging.error(
+                            "CRCON error fetching reason templates: %s",
+                            data.get("error")
+                        )
+                        return []
+
+                    templates = data.get("result") or []
+
+                    return [
+                        {
+                            "id": template.get("id"),
+                            "title": str(
+                                template.get("title") or ""
+                            ).strip(),
+                            "content": str(
+                                template.get("content") or ""
+                            ).strip(),
+                        }
+                        for template in templates
+                        if isinstance(template, dict)
+                        and str(template.get("title") or "").strip()
+                        and str(template.get("content") or "").strip()
+                    ]
+
         except Exception as e:
-            logging.error(f"Error fetching structured logs: {e}")
-            return None
+            logging.error(f"Error fetching CRCON reason templates: {e}")
+            return []
 
     async def do_punish(self, player_id, player_name, reason):
         url = f'{self.base_url}/api/punish'
